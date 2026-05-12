@@ -27,9 +27,13 @@ const BUTTONS = [
 const OPERATORS = ['+', '-', '×', '÷'];
 
 export default function Calculator() {
-  const { width: screenW } = useWindowDimensions();
+  const { width: screenW, height: screenH } = useWindowDimensions();
   const calcW = Math.min(screenW, MAX_CALC_WIDTH);
-  const BTN = (calcW - H_PAD * 2 - GAP * 3) / 4;
+  // Shrink buttons so display + grid fits in the available screen height.
+  // 6 rows of buttons + 5 row-gaps + bottom padding + display area (140px)
+  const BTN_FROM_W = (calcW - H_PAD * 2 - GAP * 3) / 4;
+  const BTN_FROM_H = (screenH - 140 - 16 - GAP * 5) / 6;
+  const BTN = Math.min(BTN_FROM_W, BTN_FROM_H);
 
   const [input, setInput] = useState('');
   const [history, setHistory] = useState('');
@@ -103,7 +107,7 @@ export default function Calculator() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.outer}>
+      <View style={[styles.outer, { height: screenH }]}>
         <View style={[styles.calculator, { width: calcW }]}>
           {/* Display */}
           <View style={styles.display}>
@@ -170,9 +174,9 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   display: {
-    flex: 1,
+    height: 140,
     justifyContent: 'flex-end',
-    paddingBottom: 16,
+    paddingBottom: 12,
     paddingHorizontal: 4,
   },
   historyTxt: {
