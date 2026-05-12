@@ -1,98 +1,203 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import {
+  Platform,
+  // eslint-disable-next-line deprecation/deprecation
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+const H_PAD = 14;
+const GAP = 10;
+const MAX_CALC_WIDTH = 420;
 
-export default function HomeScreen() {
+const BUTTONS = [
+  ['AC', '⌫', '(', ')'],
+  ['7', '8', '9', '÷'],
+  ['4', '5', '6', '×'],
+  ['1', '2', '3', '-'],
+  ['%', '0', '.', '+'],
+  ['='],
+];
+
+const OPERATORS = ['+', '-', '×', '÷'];
+
+export default function Calculator() {
+  const { width: screenW } = useWindowDimensions();
+  const calcW = Math.min(screenW, MAX_CALC_WIDTH);
+  const BTN = (calcW - H_PAD * 2 - GAP * 3) / 4;
+
+  const [input, setInput] = useState('');
+  const [history, setHistory] = useState('');
+  const [isResult, setIsResult] = useState(false);
+
+  const press = (label: string) => {
+    if (label === 'AC') {
+      setInput('');
+      setHistory('');
+      setIsResult(false);
+      return;
+    }
+
+    if (label === '⌫') {
+      if (isResult) {
+        setInput('');
+        setHistory('');
+        setIsResult(false);
+      } else {
+        setInput(p => p.slice(0, -1));
+      }
+      return;
+    }
+
+    if (label === '=') {
+      if (!input || input === 'Error') return;
+      try {
+        const sanitized = input
+          .replace(/×/g, '*')
+          .replace(/÷/g, '/')
+          .replace(/%/g, '/100');
+        if (!/^[\d+\-*/.()^\s]+$/.test(sanitized)) throw new Error();
+        // eslint-disable-next-line no-new-func
+        const res: number = Function('"use strict"; return (' + sanitized + ')')();
+        if (!isFinite(res) || isNaN(res)) throw new Error();
+        const formatted = parseFloat(res.toFixed(10)).toString();
+        setHistory(input + ' =');
+        setInput(formatted);
+        setIsResult(true);
+      } catch {
+        setHistory(input + ' =');
+        setInput('Error');
+        setIsResult(true);
+      }
+      return;
+    }
+
+    const isOp = OPERATORS.includes(label);
+
+    if (isResult) {
+      if (isOp) {
+        setInput(p => p + label);
+      } else {
+        setInput(label);
+        setHistory('');
+      }
+      setIsResult(false);
+      return;
+    }
+
+    setInput(p => p + label);
+  };
+
+  const getBtnBg = (label: string) => {
+    if (OPERATORS.includes(label) || label === '=') return styles.bgOrange;
+    if (label === 'AC') return styles.bgRed;
+    if (label === '⌫') return styles.bgGray;
+    if (['(', ')', '%'].includes(label)) return styles.bgDark;
+    return styles.bgMid;
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome Rejoice!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.outer}>
+        <View style={[styles.calculator, { width: calcW }]}>
+          {/* Display */}
+          <View style={styles.display}>
+            <Text style={styles.historyTxt} numberOfLines={1}>
+              {history}
+            </Text>
+            <Text
+              style={[styles.inputTxt, input === 'Error' && styles.errorTxt]}
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.35}
+            >
+              {input || '0'}
+            </Text>
+          </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+          {/* Button Grid */}
+          <View style={styles.grid}>
+            {BUTTONS.map((row, ri) => (
+              <View key={ri} style={styles.row}>
+                {row.map(label => (
+                  <TouchableOpacity
+                    key={label}
+                    style={[
+                      {
+                        width: BTN,
+                        height: BTN,
+                        borderRadius: BTN / 2,
+                        justifyContent: 'center' as const,
+                        alignItems: 'center' as const,
+                      },
+                      getBtnBg(label),
+                      label === '=' && styles.btnFull,
+                    ]}
+                    onPress={() => press(label)}
+                    activeOpacity={0.72}
+                  >
+                    <Text style={styles.btnTxt}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  safe: {
+    flex: 1,
+    backgroundColor: '#1C1C1E',
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0,
+  },
+  outer: {
+    flex: 1,
     alignItems: 'center',
-    gap: 8,
+    backgroundColor: '#1C1C1E',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  calculator: {
+    flex: 1,
+    paddingHorizontal: H_PAD,
+    paddingBottom: 16,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  display: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 16,
+    paddingHorizontal: 4,
   },
+  historyTxt: {
+    color: '#636366',
+    fontSize: 20,
+    textAlign: 'right',
+    marginBottom: 6,
+  },
+  inputTxt: {
+    color: '#FFFFFF',
+    fontSize: 72,
+    fontWeight: '200',
+    textAlign: 'right',
+  },
+  errorTxt: {
+    color: '#FF453A',
+    fontSize: 48,
+  },
+  grid: { gap: GAP },
+  row: { flexDirection: 'row', gap: GAP },
+  btnFull: { flex: 1, width: undefined },
+  btnTxt: { color: '#FFFFFF', fontSize: 28, fontWeight: '400' },
+  bgOrange: { backgroundColor: '#FF9F0A' },
+  bgRed: { backgroundColor: '#FF453A' },
+  bgGray: { backgroundColor: '#48484A' },
+  bgDark: { backgroundColor: '#2C2C2E' },
+  bgMid: { backgroundColor: '#3A3A3C' },
 });
